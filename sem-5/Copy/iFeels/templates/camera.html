@@ -1,0 +1,130 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Access</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        #video-container {
+            position: relative;
+            margin: 20px auto;
+            width: 1200px; /* Increased width */
+            height: 600px; /* Increased height */
+            border: 2px solid #333;
+            border-radius: 10px;
+            overflow: hidden;
+            background-color: #333;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+        }
+
+        #button-container {
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+    <h1>Camera Access Demo</h1>
+    <div id="video-container">
+        <video id="video" autoplay></video>
+    </div>
+    <div id="button-container">
+        <button id="startButton">Start Camera</button>
+        <button id="stopButton" style="display: none;">Stop Camera</button>
+        <!-- Add a form to send the image data to the server -->
+        <form action="/run_inference" method="post">
+            <button id="inferenceButton" style="display: none;">Run Inference</button>
+        </form>
+    </div>
+    <!-- Display the inference result -->
+    <div id="inferenceResult" style="display: none;"></div>
+
+    <script>
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const inferenceButton = document.getElementById('inferenceButton');
+        const video = document.getElementById('video');
+        const inferenceResult = document.getElementById('inferenceResult');
+
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                startButton.style.display = 'none';
+                stopButton.style.display = 'inline-block';
+                inferenceButton.style.display = 'inline-block';
+            } catch (error) {
+                console.error('Error accessing the camera:', error);
+            }
+        }
+
+        function stopCamera() {
+            const stream = video.srcObject;
+            const tracks = stream.getTracks();
+            tracks.forEach((track) => track.stop());
+            video.srcObject = null;
+            startButton.style.display = 'inline-block';
+            stopButton.style.display = 'none';
+            inferenceButton.style.display = 'none';
+            // Clear the inference result when stopping the camera
+            inferenceResult.style.display = 'none';
+            inferenceResult.innerHTML = '';
+        }
+
+        async function runInference() {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = canvas.toDataURL('image/jpeg');
+
+            try {
+                const response = await fetch('/run_inference', {
+                    method: 'POST',
+                    body: JSON.stringify({ image_data: imageData }),
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                const result = await response.text();
+                inferenceResult.style.display = 'block';
+                inferenceResult.innerText = 'Inference Result: ' + result;
+            } catch (error) {
+                console.error('Error during inference:', error);
+            }
+        }
+
+        startButton.addEventListener('click', startCamera);
+        stopButton.addEventListener('click', stopCamera);
+        inferenceButton.addEventListener('click', runInference);
+    </script>
+</body>
+</html>
