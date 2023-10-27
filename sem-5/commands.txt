@@ -1,6 +1,0 @@
-django-admin startproject iFeels
-python manage.py runserver
-python manage.py startapp iFeelsApp
-python manage.py makemigrations 
-python manage.py migrate
-python manage.py createsuperuser (we need to provide email and password)
